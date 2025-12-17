@@ -1,0 +1,29 @@
+services:
+  frontend:
+    build:
+      context: ./
+      dockerfile: frontend.Dockerfile
+    ports:
+      - "10001:10001"
+    restart: unless-stopped
+    env_file: "./frontend/.env"
+  backend:
+    build:
+      context: ./
+      dockerfile: backend.Dockerfile
+    ports:
+      - "10000:10000"
+    restart: unless-stopped
+    env_file: "./backend/.env"
+  centrifugo:
+    image: centrifugo/centrifugo:v5
+    volumes:
+      - ./centrifugo.json:/centrifugo/config.json
+    command: centrifugo -c config.json
+    ports:
+      - "8000:8000"
+      - 6001:6001
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
