@@ -1,0 +1,23 @@
+{
+  "name": "olprovning",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "centrifuge": "^5.5.2",
+    "tailwindcss": "^4.1.17",
+    "vue": "^3.5.13",
+    "vue-router": "4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.1.0"
+  },
+  "packageManager": "yarn@4.12.0"
+}
