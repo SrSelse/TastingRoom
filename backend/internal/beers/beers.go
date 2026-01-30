@@ -203,13 +203,41 @@ func (br *BeerRepo) getRandomBeerInRoom(ctx context.Context, roomId int) (*Beer,
 	return &beer, nil
 }
 
+func (br *BeerRepo) getFirstBeerInRoom(ctx context.Context, roomId int) (*Beer, error) {
+	row := br.db.QueryRowContext(ctx,
+		`
+      SELECT id, name, style, pictureurl
+      FROM beers
+      WHERE room_id = ?
+	  ORDER BY id ASC
+      LIMIT 1
+    `,
+		roomId,
+	)
+
+	var beer Beer
+	err := row.Scan(
+		&beer.Id,
+		&beer.Name,
+		&beer.Style,
+		&beer.PictureUrl,
+	)
+	fmt.Printf("%v\n", beer)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &beer, nil
+}
+
 func (br *BeerRepo) getNextBeerInRoom(ctx context.Context, roomId int, oldBeerId int) (*Beer, error) {
 	row := br.db.QueryRowContext(ctx,
 		`
       SELECT id, name, style, pictureurl
       FROM beers
       WHERE room_id = ?
-      AND published = 0
 	  AND id > ?
 	  ORDER BY id ASC
       LIMIT 1
@@ -227,9 +255,14 @@ func (br *BeerRepo) getNextBeerInRoom(ctx context.Context, roomId int, oldBeerId
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			b, err := br.getFirstBeerInRoom(ctx, roomId)
+			if err != nil {
+				return nil, err
+			}
+			beer = *b
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
 	return &beer, nil
 }

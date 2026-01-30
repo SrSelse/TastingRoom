@@ -52,13 +52,14 @@
     </div>
     <toast
       v-if="showToast"
-      text="Rating submitted successfully!"
+      :text="publishedRatingsToast.text"
+      :toast-type="publishedRatingsToast.type"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
+import { ref, onBeforeUnmount, watch, computed } from 'vue';
 import UserRow from '@/components/beer/UserRow.vue';
 import Toast from '@components/Toast.vue';
 import { centrifuge } from '@/classes/centrifuge.js';
@@ -83,6 +84,19 @@ const props = defineProps({
 const users = ref([]);
 const showToast = ref(false);
 const localPublished = ref(props.published);
+
+const publishedRatingsToast = computed(() => {
+  if (localPublished.value) {
+    return {
+      text: "Rating published",
+      type: "success"
+    }
+  }
+  return {
+    text: "Rating unpublished",
+    type: "error"
+  }
+});
 
 // Compute average rating
 const averageRating = computed(() => {
@@ -141,9 +155,6 @@ const publishRatings = async () => {
   }
 };
 
-onMounted(() => {
-  fetchRatings();
-});
 
 await centrifuge.init();
 const sub = ref(null)
