@@ -28,8 +28,22 @@ func (s *BeerService) GetVotesByBeerId(ctx context.Context, beerId int, roomId i
 	return s.beerRepo.getVotesByBeerId(ctx, beerId, roomId)
 }
 
-func (s *BeerService) GetBeerById(ctx context.Context, beerId int) (*Beer, error) {
-	return s.beerRepo.getBeerById(ctx, beerId)
+func (s *BeerService) GetBeerById(ctx context.Context, beerId int, roomId int, isAdmin bool) (*Beer, error) {
+	beer, err := s.beerRepo.getBeerById(ctx, beerId)
+	if err != nil || beer == nil {
+		return nil, err
+	}
+	if isAdmin {
+		cMessage := s.centrifugo.CreateMessageWithChannel(
+			fmt.Sprintf("rooms:%d-next-beer", roomId),
+			map[string]string{
+				"beerId": strconv.Itoa(beer.Id),
+			},
+		)
+		s.centrifugo.HandleMessage(ctx, cMessage)
+	}
+
+	return beer, nil
 }
 
 func (s *BeerService) UpdateVoteOnBeerId(
@@ -108,6 +122,23 @@ func (s *BeerService) GetMyRatingOnBeer(ctx context.Context, beerId int, userId 
 
 func (s *BeerService) GetRandomBeer(ctx context.Context, roomId int) (*Beer, error) {
 	beer, err := s.beerRepo.getRandomBeerInRoom(ctx, roomId)
+	if err != nil || beer == nil {
+		return nil, err
+	}
+
+	cMessage := s.centrifugo.CreateMessageWithChannel(
+		fmt.Sprintf("rooms:%d-next-beer", roomId),
+		map[string]string{
+			"beerId": strconv.Itoa(beer.Id),
+		},
+	)
+	s.centrifugo.HandleMessage(ctx, cMessage)
+
+	return beer, nil
+}
+
+func (s *BeerService) GetNextBeer(ctx context.Context, roomId int, oldBeerId int) (*Beer, error) {
+	beer, err := s.beerRepo.getNextBeerInRoom(ctx, roomId, oldBeerId)
 	if err != nil || beer == nil {
 		return nil, err
 	}

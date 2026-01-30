@@ -103,6 +103,11 @@ func addApiRoutes(
 	)
 
 	mux.Handle(
+		"/api/room/{room}/beers/next",
+		handleGetNextBeer(beerService, roomService, logger),
+	)
+
+	mux.Handle(
 		"/api/room/{room}/beers/{beer}",
 		handleGetSingleBeer(beerService, roomService, logger),
 	)
@@ -584,12 +589,18 @@ func handleGetSingleBeer(
 				return
 			}
 
-			beer, err := bs.GetBeerById(r.Context(), beerId)
+			isAdmin := false
+			if ok, err := rs.CheckIfUserIsAdminInRoom(r.Context(), roomId, userId.(int)); ok && err == nil {
+				isAdmin = true
+			}
+
+			beer, err := bs.GetBeerById(r.Context(), beerId, roomId, isAdmin)
 			if err != nil {
 				logger.Error("handleGetSingleBeer", "err", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
+
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(beer)
 
@@ -860,6 +871,53 @@ func handleGetRandomBeer(
 			beer, err := bs.GetRandomBeer(r.Context(), roomId)
 			if err != nil {
 				logger.Error("handleGetRandomBeer", "err", err)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(beer)
+		},
+	)
+}
+
+func handleGetNextBeer(
+	bs *beers.BeerService,
+	rs *rooms.RoomService,
+	logger *slog.Logger,
+) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			roomId, err := strconv.Atoi(r.PathValue("room"))
+
+			if err != nil {
+				logger.Error("handleGetNextBeer", "err", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			var data struct {
+				OldBeerId int `json:"oldBeerId"`
+			}
+
+			err = json.NewDecoder(r.Body).Decode(&data)
+			if err != nil {
+				logger.Error("handleGetNextBeer", "err", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			userId := r.Context().Value(ContextUserKey)
+
+			if ok, err := rs.CheckIfUserIsAdminInRoom(r.Context(), roomId, userId.(int)); !ok || err != nil {
+				logger.Error("handleGetNextBeer", "err", err)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			logger.Info("OldBeerId check", "OldBeerId", data.OldBeerId)
+			beer, err := bs.GetNextBeer(r.Context(), roomId, data.OldBeerId)
+			logger.Error("handleGetNextBeer", "beer", beer)
+			if err != nil {
+				logger.Error("handleGetNextBeer", "err", err)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}

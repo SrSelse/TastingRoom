@@ -16,6 +16,13 @@
         >
           Random Beverage →
         </button>
+        <button
+          v-if="isAdmin"
+          @click="goToNextBeer"
+          class="px-4 py-2 bg-indigo-700 hover:bg-indigo-600 rounded-md text-white text-sm font-medium transition-colors"
+        >
+          Next Beverage →
+        </button>
       </div>
 
       <!-- Beer Info -->
@@ -77,6 +84,12 @@
         </template>
       </Suspense>
     </div>
+    <toast
+      v-if="showToast"
+      :text="error"
+      toast-type="error"
+    />
+
   </div>
 </template>
 
@@ -85,6 +98,7 @@ import { ref, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import SatelliteMode from '@/components/beer/SatelliteMode.vue';
 import AdminMode from '@/components/beer/AdminMode.vue';
+import Toast from '@/components/Toast.vue';
 
 const props = defineProps({
   roomId: {
@@ -99,6 +113,7 @@ const props = defineProps({
 
 const beer = ref({});
 const isAdmin = ref(false);
+const showToast = ref(false);
 const mode = ref('satellite');
 const loading = ref(true);
 const error = ref(null);
@@ -106,6 +121,7 @@ const router = useRouter();
 
 const fetchBeer = async () => {
   try {
+    error.value = '';
     beer.value = {};
     loading.value = true;
     // Fetch beer details
@@ -137,6 +153,36 @@ const checkAdminStatus = async () => {
   }
 };
 
+const goToNextBeer = async () => {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/room/${props.roomId}/beers/next`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        oldBeerId: beer.value.id
+      })
+    });
+    if (!response.ok) throw new Error('Failed fetching next beer');
+    const data = await response.json();
+    if (!!data) {
+      if (data.id) {
+        router.push({name: 'beer', params: {roomId: props.roomId, beerId: data.id}});
+      } 
+    } else {
+      error.value = 'This is the last one';
+      showToast.value = true;
+      setTimeout(() => {
+        showToast.value = false;
+      }, 3000);
+    }
+  } catch (err) {
+    console.error(err)
+  }
+};
+
 const goToRandomBeer = async () => {
   try {
     const response = await fetch(`${import.meta.env.VITE_API_URL}/api/room/${props.roomId}/beers/random`, {
@@ -153,6 +199,7 @@ const goToRandomBeer = async () => {
     console.error(err)
   }
 };
+
 
 onMounted(() => {
   fetchBeer();

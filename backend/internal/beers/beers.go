@@ -203,6 +203,37 @@ func (br *BeerRepo) getRandomBeerInRoom(ctx context.Context, roomId int) (*Beer,
 	return &beer, nil
 }
 
+func (br *BeerRepo) getNextBeerInRoom(ctx context.Context, roomId int, oldBeerId int) (*Beer, error) {
+	row := br.db.QueryRowContext(ctx,
+		`
+      SELECT id, name, style, pictureurl
+      FROM beers
+      WHERE room_id = ?
+      AND published = 0
+	  AND id > ?
+	  ORDER BY id ASC
+      LIMIT 1
+    `,
+		roomId,
+		oldBeerId,
+	)
+
+	var beer Beer
+	err := row.Scan(
+		&beer.Id,
+		&beer.Name,
+		&beer.Style,
+		&beer.PictureUrl,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &beer, nil
+}
+
 func (br *BeerRepo) publishRatingsForBeer(ctx context.Context, beerId int, roomId int) error {
 	_, err := br.db.ExecContext(ctx,
 		`
