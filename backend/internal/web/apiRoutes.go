@@ -358,7 +358,14 @@ func handleBeersInRoom(
 ) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+			userId := r.Context().Value(ContextUserKey)
 			roomId, _ := strconv.Atoi(r.PathValue("room"))
+			if ok, err := rs.CheckIfUserInRoom(r.Context(), roomId, userId.(int)); !ok || err != nil {
+				logger.Error("hanldeGetRoom", "err", err)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
 			beers, err := rs.GetBeersInRoom(r.Context(), roomId)
 			if err != nil {
 				if err.Error() == "Unauthorized" {
