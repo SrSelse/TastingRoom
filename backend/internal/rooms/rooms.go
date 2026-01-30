@@ -3,8 +3,6 @@ package rooms
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"slices"
 
 	"github.com/google/uuid"
 )
@@ -157,12 +155,6 @@ func (rr *RoomRepo) getUsersInRoom(ctx context.Context, roomId int) ([]RelatedUs
 }
 
 func (rr *RoomRepo) getBeersInRoom(ctx context.Context, roomId int) ([]RelatedBeer, error) {
-	rooms, _ := rr.getRoomsByUserId(ctx, ctx.Value("userID").(int))
-	if !slices.ContainsFunc(rooms, func(r Room) bool {
-		return r.Id == roomId
-	}) {
-		return []RelatedBeer{}, fmt.Errorf("Unauthorized")
-	}
 	rows, err := rr.db.QueryContext(ctx, `
     SELECT
       beers_votes.id,
@@ -173,7 +165,7 @@ func (rr *RoomRepo) getBeersInRoom(ctx context.Context, roomId int) ([]RelatedBe
       beers_votes.published
     FROM beers_votes
     WHERE beers_votes.room_id = ?
-    ORDER BY COALESCE(beers_votes.average, beers_votes.id) DESC
+    ORDER BY beers_votes.id ASC
   `, roomId)
 	if err != nil {
 		return []RelatedBeer{}, err
