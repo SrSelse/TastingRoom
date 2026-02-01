@@ -15,6 +15,12 @@
       </div>
       <div v-if="isAuthenticated">
         <router-link
+          to="/profile"
+          class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+        >
+          Profile
+        </router-link>
+        <router-link
           to="/rooms"
           class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
         >

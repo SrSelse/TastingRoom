@@ -40,7 +40,7 @@ func (br *BeerRepo) getVotesByBeerId(ctx context.Context, beerId int, roomId int
       SELECT
         votes.id,
         user_room.user_id,
-        users.username,
+        IF(users.name != '', users.name, users.username) as userName,
         votes.points,
         votes.note
       FROM user_room
@@ -72,7 +72,7 @@ func (br *BeerRepo) getVotesByBeerId(ctx context.Context, beerId int, roomId int
 		`
       SELECT
         user_room.user_id,
-        users.username
+        IF(users.name != '', users.name, users.username) as userName
       FROM user_room
       JOIN users ON users.id = user_room.user_id
       WHERE user_room.room_id = ?

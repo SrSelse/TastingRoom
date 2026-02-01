@@ -21,6 +21,18 @@
           />
         </div>
         <div>
+          <label for="displayName" class="sr-only">Display name</label>
+          <input
+            id="displayName"
+            v-model="displayName"
+            name="displayName"
+            type="text"
+            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 placeholder-gray-400 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+            placeholder="Display name"
+            @keyup.enter="handleRegister"
+          />
+        </div>
+        <div>
           <label for="password" class="sr-only">Password</label>
           <input
             id="password"
@@ -95,6 +107,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const username = ref('');
+const displayName = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const registerInProgress = ref(false);
@@ -130,7 +143,8 @@ const handleRegister = async () => {
       method: 'POST',
       body: JSON.stringify({
         password: password.value,
-        username: username.value
+        username: username.value,
+        displayName: displayName.value
       }),
       headers: {
         'Content-Type': 'application/json'

@@ -128,6 +128,16 @@ func addApiRoutes(
 	)
 
 	mux.Handle(
+		"/api/user/profile",
+		handleGetUserProfile(userService, logger),
+	)
+
+	mux.Handle(
+		"/api/user/updateProfile",
+		handleUpdateUserProfile(userService, logger),
+	)
+
+	mux.Handle(
 		"/api/verifyToken",
 		handleTestToken(logger),
 	)
@@ -972,6 +982,55 @@ func handleEditBeer(
 			err = bs.UpdateBeer(r.Context(), data, roomId)
 			if err != nil {
 				logger.Error("handleEditRoom/db", "err", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode("Success")
+		},
+	)
+}
+
+func handleGetUserProfile(
+	us *auth.UserService,
+	logger *slog.Logger,
+) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			userId := r.Context().Value(ContextUserKey)
+			u, err := us.GetUserById(r.Context(), userId.(int))
+			if err != nil {
+				logger.Error("handleGetUserProfile/GetUserById", "err", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(u)
+
+		},
+	)
+}
+
+func handleUpdateUserProfile(
+	us *auth.UserService,
+	logger *slog.Logger,
+) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			userId := r.Context().Value(ContextUserKey)
+			var data auth.UpdateProfile
+
+			err := json.NewDecoder(r.Body).Decode(&data)
+			if err != nil {
+				logger.Error("handleUpdateUserProfile/bodyDecode", "err", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			err = us.UpdateUserProfile(r.Context(), userId.(int), data)
+			if err != nil {
+				logger.Error("handleUpdateUserProfile/dbUpdate", "err", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}

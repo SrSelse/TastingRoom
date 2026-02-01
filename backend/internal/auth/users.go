@@ -11,7 +11,7 @@ type User struct {
 	Id       int
 	Username string
 	password string
-	Name     string
+	Name     string `json:"displayName"`
 }
 
 type LoginAttempt struct {
@@ -22,7 +22,11 @@ type LoginAttempt struct {
 type SignupAttempt struct {
 	Username string
 	Password string
-	Name     string
+	Name     string `json:"displayName"`
+}
+
+type UpdateProfile struct {
+	DisplayName string `json:"displayName"`
 }
 
 type UserRepo struct {
@@ -34,7 +38,20 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 }
 
 func (ur *UserRepo) getUserById(ctx context.Context, userId int) (*User, error) {
-	return nil, nil
+	row := ur.db.QueryRowContext(ctx, `
+    SELECT id, username, name as displayName
+    FROM users
+    WHERE id = ?
+  `,
+		userId,
+	)
+	var u User
+	err := row.Scan(&u.Id, &u.Username, &u.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
 }
 
 func (ur *UserRepo) signIn(ctx context.Context, la LoginAttempt) (*User, error) {
@@ -90,4 +107,17 @@ func (ur *UserRepo) usernameInUse(ctx context.Context, username string) (bool, e
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (ur *UserRepo) updateUserProfile(ctx context.Context, userId int, update UpdateProfile) error {
+	_, err := ur.db.ExecContext(ctx,
+		`
+			UPDATE users
+			SET name = ?
+			WHERE users.id = ?
+		`,
+		update.DisplayName,
+		userId,
+	)
+	return err
 }
