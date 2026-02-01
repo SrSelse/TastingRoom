@@ -22,7 +22,7 @@ type LoginAttempt struct {
 type SignupAttempt struct {
 	Username string
 	Password string
-	Name     string
+	Name     string `json:"displayName"`
 }
 
 type UserRepo struct {
