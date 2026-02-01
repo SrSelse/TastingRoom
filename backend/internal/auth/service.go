@@ -52,3 +52,7 @@ func (s *UserService) SignUp(ctx context.Context, username string, password stri
 	}
 	return s.userRepo.signUp(ctx, sa)
 }
+
+func (s *UserService) UpdateUserProfile(ctx context.Context, userId int, update UpdateProfile) error {
+	return s.userRepo.updateUserProfile(ctx, userId, update)
+}
