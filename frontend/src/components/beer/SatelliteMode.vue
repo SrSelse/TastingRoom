@@ -2,14 +2,11 @@
   <div class="bg-gray-800 p-6 rounded-lg">
     <h2 class="text-xl font-semibold mb-4">Rate This</h2>
     <div class="mb-4">
-      <label for="rating" class="block text-sm font-medium text-gray-300 mb-2">Your Rating (0-5)</label>
+      <label for="rating" class="block text-sm font-medium text-gray-300 mb-2">Your Rating</label>
       <input
         id="rating"
         v-model="myRating.rating"
         type="number"
-        min="0"
-        max="5"
-        step="0.1"
         class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
       />
     </div>
