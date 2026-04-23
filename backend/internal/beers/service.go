@@ -110,11 +110,21 @@ func (s *BeerService) GetBeersByUserVotes(ctx context.Context, userId int) ([]Be
 }
 
 func (s *BeerService) PublishRatingsForBeer(ctx context.Context, beerId int, roomId int) error {
-	return s.beerRepo.publishRatingsForBeer(ctx, beerId, roomId)
+	if err := s.beerRepo.publishRatingsForBeer(ctx, beerId, roomId); err != nil {
+		return err
+	}
+	cMessage := s.centrifugo.CreateVoteMessage(beerId, 0, 0, "", "", "ratings-published")
+	s.centrifugo.HandleMessage(ctx, cMessage)
+	return nil
 }
 
 func (s *BeerService) UnpublishRatingsForBeer(ctx context.Context, beerId int, roomId int) error {
-	return s.beerRepo.unpublishRatingsForBeer(ctx, beerId, roomId)
+	if err := s.beerRepo.unpublishRatingsForBeer(ctx, beerId, roomId); err != nil {
+		return err
+	}
+	cMessage := s.centrifugo.CreateVoteMessage(beerId, 0, 0, "", "", "ratings-unpublished")
+	s.centrifugo.HandleMessage(ctx, cMessage)
+	return nil
 }
 func (s *BeerService) GetMyRatingOnBeer(ctx context.Context, beerId int, userId int) (*Vote, error) {
 	return s.beerRepo.getMyRatingOnBeer(ctx, beerId, userId)

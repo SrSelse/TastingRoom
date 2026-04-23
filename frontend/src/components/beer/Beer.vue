@@ -69,6 +69,7 @@
           v-if="mode === 'satellite'"
           :beer-id="beerId"
           :room-id="roomId"
+          :published="beer.published"
         />
 
       </Suspense>

@@ -41,48 +41,73 @@
       v-if="showToast"
       text="Rating submitted successfully!"
     />
+
+    <!-- Published Ratings -->
+    <div v-if="isPublished && users.length > 0" class="mt-8">
+      <h2 class="text-xl font-semibold mb-4">Ratings</h2>
+      <div class="space-y-4">
+        <user-row
+          v-for="user in users"
+          :key="user.id"
+          :user="user"
+          :showRating="true"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import Toast from '@components/Toast.vue';
+import UserRow from '@/components/beer/UserRow.vue';
 import { centrifuge } from '@/classes/centrifuge.js';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-
-
 const props = defineProps({
   beerId: String,
   roomId: String,
+  published: {
+    type: Boolean,
+    default: false,
+  },
 });
-
-
 
 const emit = defineEmits(['rating-submitted']);
 const showNotes = ref(false);
 const showToast = ref(false);
+const isPublished = ref(props.published);
+const users = ref([]);
 const myRating = ref({
   rating: 0,
   note: ""
 });
 
 watch(
+  () => props.published,
+  (val) => {
+    isPublished.value = val;
+    if (val) fetchRatings();
+  },
+);
+
+watch(
   () => props.beerId,
-  () => fetchMyRating(),
-  // { immediate: true },
+  () => {
+    isPublished.value = props.published;
+    fetchMyRating();
+    if (isPublished.value) fetchRatings();
+  },
 );
 
 watch(
   () => props.roomId,
   () => {
     router.push({name: 'room', params: {roomId: props.roomId}});
-
   },
-  // { immediate: true },
-  );
+);
 
 const submitRating = async () => {
   try {
@@ -98,7 +123,6 @@ const submitRating = async () => {
     });
     if (!response.ok) throw new Error('Failed to submit rating');
 
-    // Show toast notification
     showToast.value = true;
     setTimeout(() => {
       showToast.value = false;
@@ -112,7 +136,6 @@ const submitRating = async () => {
 
 const fetchMyRating = async () => {
   try {
-    // Fetch beer details
     const response = await fetch(`${import.meta.env.VITE_API_URL}/api/room/${props.roomId}/beers/${props.beerId}/my-rating`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -133,18 +156,45 @@ const fetchMyRating = async () => {
   }
 };
 
+const fetchRatings = async () => {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/room/${props.roomId}/beers/${props.beerId}/ratings`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    if (!response.ok) throw new Error('Failed to fetch ratings');
+    users.value = await response.json();
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 onMounted(() => {
   fetchMyRating();
+  if (isPublished.value) fetchRatings();
 });
 
 await centrifuge.init();
-const sub = centrifuge.newSubscription(`rooms:${props.roomId}-next-beer`);
-sub.on('publication', (ctx) => {
-  console.log(ctx);
+
+const subNextBeer = centrifuge.newSubscription(`rooms:${props.roomId}-next-beer`);
+subNextBeer.on('publication', (ctx) => {
   router.push({name: 'beer', params: {roomId: props.roomId, beerId: ctx.data.beerId}});
 }).subscribe();
 
+const subBeer = centrifuge.newSubscription(`beers:beer-${props.beerId}`);
+subBeer.on('publication', (ctx) => {
+  if (ctx.data.reason === 'ratings-published') {
+    isPublished.value = true;
+    fetchRatings();
+  } else if (ctx.data.reason === 'ratings-unpublished') {
+    isPublished.value = false;
+    users.value = [];
+  }
+}).subscribe();
+
 onBeforeUnmount(() => {
-  centrifuge.removeSubscription(sub)
-})
+  centrifuge.removeSubscription(subNextBeer);
+  centrifuge.removeSubscription(subBeer);
+});
 </script>
