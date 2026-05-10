@@ -129,6 +129,7 @@ const submitRating = async () => {
     }, 3000);
 
     emit('rating-submitted');
+    fetchMyRating()
   } catch (err) {
     console.error(err);
   }
