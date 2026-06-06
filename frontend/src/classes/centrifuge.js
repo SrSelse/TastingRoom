@@ -2,6 +2,7 @@ import { Centrifuge, UnauthorizedError } from 'centrifuge';
 
 export class OPCentrifuge {
   centrifuge = null;
+  refCounts = new Map();
 
   async init(token = null) {
     if (this.centrifuge) {
@@ -73,22 +74,42 @@ export class OPCentrifuge {
   }
 
   newSubscription (name, options) {
-    const subscriptionOptions = {...options};
+    // Reuse existing subscription — multiple components may listen to the
+    // same channel (e.g. AdminMode + SatelliteMode on the same beer).
+    let sub = this.centrifuge.getSubscription(name);
 
-    // Inget behov av subscription token för user channels, men bör kunna hanteras snyggare?
-    if (name.indexOf('#') === -1) {
-      subscriptionOptions.getToken = (ctx) => this.getSubscriptionToken(ctx);
+    if (!sub) {
+      const subscriptionOptions = {...options};
+
+      // Inget behov av subscription token för user channels, men bör kunna hanteras snyggare?
+      if (name.indexOf('#') === -1) {
+        subscriptionOptions.getToken = (ctx) => this.getSubscriptionToken(ctx);
+      }
+
+      sub = this.centrifuge.newSubscription(name, {
+        ...subscriptionOptions,
+      });
     }
 
-    return this.centrifuge.newSubscription(name, {
-      ...subscriptionOptions,
-    });
+    this.refCounts.set(name, (this.refCounts.get(name) || 0) + 1);
+    return sub;
   }
 
   removeSubscription(sub) {
-    if (sub) {
-      this.centrifuge.removeSubscription(sub);
+    if (!sub) {
+      return;
     }
+
+    // Only tear down the channel when the last listener leaves.
+    const count = (this.refCounts.get(sub.channel) || 1) - 1;
+    if (count > 0) {
+      this.refCounts.set(sub.channel, count);
+      return;
+    }
+
+    this.refCounts.delete(sub.channel);
+    sub.unsubscribe();
+    this.centrifuge.removeSubscription(sub);
   }
 }
 

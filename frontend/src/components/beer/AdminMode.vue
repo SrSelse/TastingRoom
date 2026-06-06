@@ -158,21 +158,30 @@ const publishRatings = async () => {
 
 await centrifuge.init();
 const sub = ref(null)
+
+const onBeerPublication = (ctx) => {
+  fetchRatings();
+};
+
 const createCentrifugoSub = () => {
   sub.value = centrifuge.newSubscription(`beers:beer-${props.beerId}`);
-  sub.value.on('publication', (ctx) => {
-    fetchRatings();
-  }).subscribe();
+  sub.value.on('publication', onBeerPublication).subscribe();
 }
+
+const removeCentrifugoSub = () => {
+  if (sub.value) {
+    sub.value.off('publication', onBeerPublication);
+    centrifuge.removeSubscription(sub.value);
+    sub.value = null;
+  }
+};
 
 watch(
   () => props.beerId,
   () => {
     localPublished.value = props.published;
     fetchRatings();
-    if (sub.value) {
-      centrifuge.removeSubscription(sub.value);
-    }
+    removeCentrifugoSub();
     createCentrifugoSub();
   },
   { immediate: true },
@@ -186,6 +195,6 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  centrifuge.removeSubscription(sub.value)
+  removeCentrifugoSub();
 })
 </script>

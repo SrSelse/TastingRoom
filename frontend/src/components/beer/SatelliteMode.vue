@@ -178,13 +178,11 @@ onMounted(() => {
 
 await centrifuge.init();
 
-const subNextBeer = centrifuge.newSubscription(`rooms:${props.roomId}-next-beer`);
-subNextBeer.on('publication', (ctx) => {
+const onNextBeerPublication = (ctx) => {
   router.push({name: 'beer', params: {roomId: props.roomId, beerId: ctx.data.beerId}});
-}).subscribe();
+};
 
-const subBeer = centrifuge.newSubscription(`beers:beer-${props.beerId}`);
-subBeer.on('publication', (ctx) => {
+const onBeerPublication = (ctx) => {
   if (ctx.data.reason === 'ratings-published') {
     isPublished.value = true;
     fetchRatings();
@@ -192,10 +190,38 @@ subBeer.on('publication', (ctx) => {
     isPublished.value = false;
     users.value = [];
   }
-}).subscribe();
+};
+
+const subNextBeer = centrifuge.newSubscription(`rooms:${props.roomId}-next-beer`);
+subNextBeer.on('publication', onNextBeerPublication).subscribe();
+
+let subBeer = null;
+const subscribeToBeer = () => {
+  subBeer = centrifuge.newSubscription(`beers:beer-${props.beerId}`);
+  subBeer.on('publication', onBeerPublication).subscribe();
+};
+
+const unsubscribeFromBeer = () => {
+  if (subBeer) {
+    subBeer.off('publication', onBeerPublication);
+    centrifuge.removeSubscription(subBeer);
+    subBeer = null;
+  }
+};
+
+subscribeToBeer();
+
+watch(
+  () => props.beerId,
+  () => {
+    unsubscribeFromBeer();
+    subscribeToBeer();
+  },
+);
 
 onBeforeUnmount(() => {
+  subNextBeer.off('publication', onNextBeerPublication);
   centrifuge.removeSubscription(subNextBeer);
-  centrifuge.removeSubscription(subBeer);
+  unsubscribeFromBeer();
 });
 </script>
