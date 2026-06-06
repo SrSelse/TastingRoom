@@ -65,6 +65,19 @@
         </button>
       </div>
 
+      <!-- Sort Toggle -->
+      <div class="flex items-center space-x-2 mb-4">
+        <span class="text-gray-500 font-bold pr-2">Sort by</span>
+        <button
+          v-for="option in sortOptions"
+          :key="option.value"
+          @click="sortBy = option.value"
+          :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors', sortBy === option.value ? 'bg-indigo-600' : 'bg-gray-700 hover:bg-gray-600']"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+
       <!-- Beers List -->
       <div v-if="loading" class="text-center py-12">
         <p class="text-gray-300">Loading beverages...</p>
@@ -78,7 +91,7 @@
         </div>
         <div v-else class="divide-y divide-gray-700">
           <beer-list-item
-            v-for="beer in beers"
+            v-for="beer in sortedBeers"
             :key="beer.id"
             :beer="beer"
             :room-id="roomId"
@@ -125,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import BeerListItem from './BeerListItem.vue';
 import AddBeerModal from '@components/modals/AddBeerModal.vue';
@@ -149,6 +162,27 @@ const showAdminModal = ref(false);
 const isAdmin = ref(false);
 const router = useRouter();
 const showRatings = ref(false);
+
+const sortOptions = [
+  { value: 'id', label: 'Id' },
+  { value: 'name', label: 'Name' },
+  { value: 'rating', label: 'Rating' }
+];
+const sortBy = ref('id');
+const sortedBeers = computed(() => {
+  const sorted = [...beers.value];
+  switch (sortBy.value) {
+    case 'name':
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case 'rating':
+      sorted.sort((a, b) => (b.average ?? -1) - (a.average ?? -1));
+      break;
+    default:
+      sorted.sort((a, b) => a.id - b.id);
+  }
+  return sorted;
+});
 
 // Copy invitation code to clipboard
 const copyInvitationCode = () => {
